@@ -76,10 +76,10 @@ def interp2d_pairs(*args, **kwargs):
         *args, **kwargs))
 
 
-def interp2d_pairs_eval(x, y, v, xq, yq):
-    f = interp2d_pairs(x, y, v)
+def interp2d_pairs_eval(x, y, v, xq, yq, dtype=np.float):
+    f = interp2d_pairs(x.astype(dtype), y.astype(dtype), v.astype(dtype))
 
     # suppress runtime warnings
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
-        return f(xq, yq)
+        return f(xq.astype(dtype), yq.astype(dtype))

@@ -26,12 +26,12 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
     #  |-- BSB --|   |--- A2 --|   |-- A3 -|          |--- BSc ----|   |-- A2 -|
     #  |---------------- A ----------------|          |---------------- b -------------------|
 
-    xdx, ydx = np.meshgrid(np.arange(1, width - 1, dtype=np.float),
-                           np.arange(0, height, dtype=np.float))
-    xdy, ydy = np.meshgrid(np.arange(0, width, dtype=np.float),
-                           np.arange(1, height - 1, dtype=np.float))
-    x_grid, y_grid = np.meshgrid(np.arange(0, width, dtype=np.float),
-                                 np.arange(0, height, dtype=np.float))
+    xdx, ydx = np.meshgrid(np.arange(1, width - 1, dtype=np.float32),
+                           np.arange(0, height, dtype=np.float32))
+    xdy, ydy = np.meshgrid(np.arange(0, width, dtype=np.float32),
+                           np.arange(1, height - 1, dtype=np.float32))
+    x_grid, y_grid = np.meshgrid(np.arange(0, width, dtype=np.float32),
+                                 np.arange(0, height, dtype=np.float32))
 
     # loop through sigma list
     for i_out in range(0, params['n_outer_iter']):
@@ -47,8 +47,8 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
 
         start_time = time.time()
         for i_in in range(0, params['n_inner_iter']):
-            x, y = np.meshgrid(np.arange(0, width, dtype=np.float),
-                               np.arange(0, height, dtype=np.float))
+            x, y = np.meshgrid(np.arange(0, width, dtype=np.float32),
+                               np.arange(0, height, dtype=np.float32))
             x += u_mean_t[:, :, 0]
             y += u_mean_t[:, :, 1]
             mask = (x >= 2) & (x <= width - 3) & (y >= 2) & (y <= height - 3)
@@ -56,8 +56,8 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
             ymask = y[mask]
 
             # initialize sparse matrices BSB and BSc
-            BSB = sparse.csr_matrix((height * width * 2, height * width * 2))
-            BSc = sparse.csr_matrix((height * width * 2, 1))
+            BSB = sparse.csr_matrix((height * width * 2, height * width * 2), dtype=np.float32)
+            BSc = sparse.csr_matrix((height * width * 2, 1), dtype=np.float32)
 
             fdx = np.array([1, 0, -1])
             for tf in range(frame_list_len - 1):
@@ -69,24 +69,24 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                                               mode='valid')
 
                 # construct sparse matrix B
-                B11_values = np.zeros((height, width))
-                B12_values = np.zeros((height, width))
-                B21_values = np.zeros((height, width))
-                B22_values = np.zeros((height, width))
+                B11_values = np.zeros((height, width), dtype=np.float32)
+                B12_values = np.zeros((height, width), dtype=np.float32)
+                B21_values = np.zeros((height, width), dtype=np.float32)
+                B22_values = np.zeros((height, width), dtype=np.float32)
 
                 # interpolations
                 B11_values[mask] = interp2d_pairs_eval(xdx, ydx, dvx_grid[:, :,
                                                                           0],
-                                                       xmask, ymask)
+                                                       xmask, ymask, dtype=np.float32)
                 B12_values[mask] = interp2d_pairs_eval(xdy, ydy, dvy_grid[:, :,
                                                                           0],
-                                                       xmask, ymask)
+                                                       xmask, ymask, dtype=np.float32)
                 B21_values[mask] = interp2d_pairs_eval(xdx, ydx, dvx_grid[:, :,
                                                                           1],
-                                                       xmask, ymask)
+                                                       xmask, ymask, dtype=np.float32)
                 B22_values[mask] = interp2d_pairs_eval(xdy, ydy, dvy_grid[:, :,
                                                                           1],
-                                                       xmask, ymask)
+                                                       xmask, ymask, dtype=np.float32)
 
                 B11 = sparse.csr_matrix((B11_values.flatten('F'), (np.arange(
                     0, height * width), np.arange(0, height * width))),
@@ -104,6 +104,7 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                 B = sparse.vstack(
                     [sparse.hstack([B11, B12]),
                      sparse.hstack([B21, B22])])
+                B = B.astype(np.float32)
 
                 # construct sparse matrix c
                 c1 = np.zeros((height, width))
@@ -112,16 +113,18 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                 # interpolations
                 c1[mask] = interp2d_pairs_eval(x_grid, y_grid, vt[tf + 1, :, :,
                                                                   0], xmask,
-                                               ymask) - vt[tf, :, :, 0][mask]
+                                               ymask, dtype=np.float32) - vt[tf, :, :, 0][mask]
                 c2[mask] = interp2d_pairs_eval(x_grid, y_grid, vt[tf + 1, :, :,
                                                                   1], xmask,
-                                               ymask) - vt[tf, :, :, 1][mask]
+                                               ymask, dtype=np.float32) - vt[tf, :, :, 1][mask]
 
                 c = sparse.csr_matrix(
                     np.concatenate([c1.flatten('F'),
                                     c2.flatten('F')])[:, np.newaxis])
+                c = c.astype(np.float32)
 
                 BA = B.T.dot(vi_var)
+                BA = BA.astype(np.float32)
 
                 BSB = BSB + BA.dot(B)
                 BSc = BSc + BA.dot(c)
@@ -130,8 +133,11 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
 
             # solve linear system to obtain u
             A = BSB + A2 + A3
+            A = A.astype(np.float32)
+
             b = -(BSc.toarray().flatten() + A2.dot(ui_t) +
                   params['beta3'] * ui_t)
+            b = b.astype(np.float32)
 
             ui = sparse.linalg.lsmr(A, b)[0]
 
