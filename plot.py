@@ -44,14 +44,14 @@ def save_vector_video(vec, filename):
 
     fig, ax = plt.subplots()
 
-    ax.xaxis.set_ticks([])
-    ax.yaxis.set_ticks([])
-    ax.set_aspect('equal')
-
     def animate(i):
         ax.clear()
         X, Y, u, v = generate_quiver(vec, i)
         ax.quiver(X, Y, u, v)
+
+        ax.xaxis.set_ticks([])
+        ax.yaxis.set_ticks([])
+        ax.set_aspect('equal')
 
     ani = animation.FuncAnimation(fig,
                                   animate,

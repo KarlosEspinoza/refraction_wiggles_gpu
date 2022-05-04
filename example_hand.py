@@ -10,15 +10,15 @@ if __name__ == '__main__':
     scale = 0.05  # scale factor (0-1) for video
     t_filter_theta = 2  # bandwidth of temporal filter
     alpha = 0.04
-    beta2 = 2
-    beta3 = 0.1
-    t_window = 3  # number of frames to be concatenated to form wiggle feature
+    beta2 = 5
+    beta3 = 1
+    t_window = 10  # number of frames to be concatenated to form wiggle feature
 
     frames = video2matrix(video_path, scale=scale)
     frames = temporal_filter(frames, t_filter_theta)
-    frames = frames[:20, :, :]
+    frames = frames[:10, :, :]
 
-    plot_frame(frames, 0)
+    #plot_frame(frames, 0)
 
     # compute wiggles
     wiggles, wiggles_var = opt_flow(frames, alpha2=alpha)
