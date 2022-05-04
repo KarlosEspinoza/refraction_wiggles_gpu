@@ -2,6 +2,7 @@ from opt_flow import opt_flow
 from fluid_flow import fluid_flow
 from utils import *
 from plot import *
+import numpy as np
 
 if __name__ == '__main__':
     # parameters
@@ -23,7 +24,10 @@ if __name__ == '__main__':
     # compute wiggles
     wiggles, wiggles_var = opt_flow(frames, alpha2=alpha)
     plot_vector(wiggles, 0)
-    #save_vector_video(wiggles, 'hand_wiggles.mp4')
+
+    wiggle_max = np.sqrt(
+        np.amax(wiggles[:, :, :, 0])**2 + np.amax(wiggles[:, :, :, 1])**2)
+    save_vector_video(wiggles, 'hand_wiggles.mp4', scale=10 * wiggle_max)
 
     # compute fluid flow
     flow, flow_var = fluid_flow(wiggles,
@@ -34,4 +38,7 @@ if __name__ == '__main__':
                                 n_jobs=n_jobs)
 
     plot_vector(flow, 0)
-    save_vector_video(flow, 'hand_flow.mp4')
+
+    flow_max = np.sqrt(
+        np.amax(flow[:, :, :, 0])**2 + np.amax(flow[:, :, :, 1])**2)
+    save_vector_video(flow, 'hand_flow.mp4', scale=10 * flow_max)

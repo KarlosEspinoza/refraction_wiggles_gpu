@@ -26,12 +26,14 @@ def generate_quiver(vec, i):
     return X, Y, u, v
 
 
-def plot_vector(vec, i):
+def plot_vector(vec, i, **params):
+
+    scale = params.get('scale', None)
 
     X, Y, u, v = generate_quiver(vec, i)
 
     fig, ax = plt.subplots()
-    ax.quiver(X, Y, u, v)
+    ax.quiver(X, Y, u, v, scale=scale)
 
     ax.xaxis.set_ticks([])
     ax.yaxis.set_ticks([])
@@ -40,14 +42,16 @@ def plot_vector(vec, i):
     plt.show()
 
 
-def save_vector_video(vec, filename):
+def save_vector_video(vec, filename, **params):
+
+    scale = params.get('scale', None)
 
     fig, ax = plt.subplots()
 
     def animate(i):
         ax.clear()
         X, Y, u, v = generate_quiver(vec, i)
-        ax.quiver(X, Y, u, v)
+        ax.quiver(X, Y, u, v, scale=scale)
 
         ax.xaxis.set_ticks([])
         ax.yaxis.set_ticks([])
@@ -58,3 +62,4 @@ def save_vector_video(vec, filename):
                                   frames=vec.shape[0],
                                   interval=100)
     ani.save(filename, writer='ffmpeg')
+    print(f'Video saved to {filename}')
