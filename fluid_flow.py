@@ -2,10 +2,11 @@ from utils import gaussian_filter, interp2d_pairs_eval
 import numpy as np
 from scipy import signal, sparse
 import time
+from joblib import Parallel, delayed, cpu_count
 
 
 # compute fluid flow for a single frame
-def solve_u(vi, vi_var, A2, A3, **params):
+def solve_u(vi, vi_var, A2, A3, iframe, **params):
     frame_list_len, height, width, _ = vi.shape
 
     sigma_list = np.logspace(np.log10(params['sigma_start']),
@@ -138,7 +139,7 @@ def solve_u(vi, vi_var, A2, A3, **params):
             u_mean_t[u_mean_t > params['u_max']] = params['u_max']
             u_mean_t[u_mean_t < -params['u_max']] = -params['u_max']
             print(
-                f'i_out = {i_out}/{params["n_outer_iter"]-1}, i_in = {i_in}/{params["n_inner_iter"]-1} is done ({time.time() - start_time:.3f}s)'
+                f'frame {iframe}/{params["nframe"]-2}, i_out = {i_out}/{params["n_outer_iter"]-1}, i_in = {i_in}/{params["n_inner_iter"]-1} is done ({time.time() - start_time:.3f}s)'
             )
 
         # calculate variance
@@ -158,15 +159,17 @@ def fluid_flow(wiggles, wiggles_var, **params):
         'n_inner_iter': 1,
         't_window': 2,
         'sigma_var': 3,
-        'u_max': 50
+        'u_max': 50,
+        'n_jobs': 1  # number of parallelized jobs
     }
 
     params = {**default_params, **params}
 
     nframe, height, width, _ = wiggles.shape
+    params['nframe'] = nframe
 
-    # initialize outputs
-    u_mean = np.zeros((nframe - 1, height, width, 2))
+    # initialize outputs (for parallelization)
+    delayed_u_mean = []  # shape = (nframe - 1, height, width, 2)
     u_var = np.zeros((nframe - 1, height, width, 3))
 
     sw = params['sigma_var'] * 3
@@ -219,7 +222,16 @@ def fluid_flow(wiggles, wiggles_var, **params):
          (np.arange(height * width * 2), np.arange(height * width * 2))),
         shape=(height * width * 2, height * width * 2))
 
+    # print out info
     print('Start computing fluid flow...')
+    if params['n_jobs'] > 1:
+        if params['n_jobs'] > cpu_count():
+            print(
+                f'Warning: {params["n_jobs"]} jobs requested, but only {cpu_count()} CPUs available.'
+            )
+            params['n_jobs'] = cpu_count()
+        print(f'Running {params["n_jobs"]} parallel jobs...')
+
     for iframe in range(nframe - 1):
 
         # extract needed wiggle features for current frame
@@ -229,10 +241,14 @@ def fluid_flow(wiggles, wiggles_var, **params):
         vi = wiggles[iframe_list, :, :, :]
         vi_var = wiggles_var[iframe]
 
-        print(f'frame {iframe}/{nframe-2}:')
-        u_mean_t = solve_u(vi, vi_var, A2, A3, **params)
+        # u_mean_t = solve_u(vi, vi_var, A2, A3, iframe, **params)
 
-        # update
-        u_mean[iframe, :, :, :] = u_mean_t
+        # parallelization
+        delayed_solve = delayed(solve_u)(vi, vi_var, A2, A3, iframe, **params)
+        delayed_u_mean.append(delayed_solve)
 
-    return u_mean
+    # parallelization
+    parallel_pool = Parallel(n_jobs=params["n_jobs"])
+    u_mean = parallel_pool(delayed_u_mean)
+
+    return np.array(u_mean)
