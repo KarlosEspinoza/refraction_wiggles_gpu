@@ -6,7 +6,7 @@ from plot import *
 if __name__ == '__main__':
     # parameters
     video_path = 'data/hand.avi'
-    n_jobs = 8 # for parallel computing
+    n_jobs = 8  # for parallel computing
     scale = 0.05  # scale factor (0-1) for video
     t_filter_theta = 2  # bandwidth of temporal filter
     alpha = 0.04
@@ -16,13 +16,14 @@ if __name__ == '__main__':
 
     frames = video2matrix(video_path, scale=scale)
     frames = temporal_filter(frames, t_filter_theta)
-    frames = frames[:20, :, :]
+    frames = frames[:10, :, :]
 
     plot_frame(frames, 0)
 
     # compute wiggles
     wiggles, wiggles_var = opt_flow(frames, alpha2=alpha)
     plot_vector(wiggles, 0)
+    save_vector_video(wiggles, 'wiggles.mp4')
 
     # compute fluid flow
     flow = fluid_flow(wiggles,
