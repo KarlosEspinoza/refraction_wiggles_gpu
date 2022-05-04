@@ -16,7 +16,7 @@ if __name__ == '__main__':
 
     frames = video2matrix(video_path, scale=scale)
     frames = temporal_filter(frames, t_filter_theta)
-    frames = frames[:10, :, :]
+    #frames = frames[:10, :, :]
 
     #plot_frame(frames, 0)
 

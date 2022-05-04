@@ -1,6 +1,6 @@
-from utils import gaussian_filter, interp2d_pairs_eval
+from utils import gaussian_filter
 import numpy as np
-from scipy import signal, sparse
+from scipy import signal, sparse, interpolate
 import time
 from joblib import Parallel, delayed, cpu_count
 
@@ -26,13 +26,6 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
     #  |-- BSB --|   |--- A2 --|   |-- A3 -|          |--- BSc ----|   |-- A2 -|
     #  |---------------- A ----------------|          |---------------- b -------------------|
 
-    xdx, ydx = np.meshgrid(np.arange(1, width - 1, dtype=np.float32),
-                           np.arange(0, height, dtype=np.float32))
-    xdy, ydy = np.meshgrid(np.arange(0, width, dtype=np.float32),
-                           np.arange(1, height - 1, dtype=np.float32))
-    x_grid, y_grid = np.meshgrid(np.arange(0, width, dtype=np.float32),
-                                 np.arange(0, height, dtype=np.float32))
-
     # loop through sigma list
     for i_out in range(0, params['n_outer_iter']):
         sw = sigma_list[i_out]
@@ -56,7 +49,8 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
             ymask = y[mask]
 
             # initialize sparse matrices BSB and BSc
-            BSB = sparse.csr_matrix((height * width * 2, height * width * 2), dtype=np.float32)
+            BSB = sparse.csr_matrix((height * width * 2, height * width * 2),
+                                    dtype=np.float32)
             BSc = sparse.csr_matrix((height * width * 2, 1), dtype=np.float32)
 
             fdx = np.array([1, 0, -1])
@@ -67,6 +61,8 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                 dvy_grid = signal.fftconvolve(vt[tf, :, :, :],
                                               fdx[:, np.newaxis, np.newaxis],
                                               mode='valid')
+                dvx_grid = dvx_grid.astype(np.float32)
+                dvy_grid = dvy_grid.astype(np.float32)
 
                 # construct sparse matrix B
                 B11_values = np.zeros((height, width), dtype=np.float32)
@@ -75,18 +71,30 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                 B22_values = np.zeros((height, width), dtype=np.float32)
 
                 # interpolations
-                B11_values[mask] = interp2d_pairs_eval(xdx, ydx, dvx_grid[:, :,
-                                                                          0],
-                                                       xmask, ymask, dtype=np.float32)
-                B12_values[mask] = interp2d_pairs_eval(xdy, ydy, dvy_grid[:, :,
-                                                                          0],
-                                                       xmask, ymask, dtype=np.float32)
-                B21_values[mask] = interp2d_pairs_eval(xdx, ydx, dvx_grid[:, :,
-                                                                          1],
-                                                       xmask, ymask, dtype=np.float32)
-                B22_values[mask] = interp2d_pairs_eval(xdy, ydy, dvy_grid[:, :,
-                                                                          1],
-                                                       xmask, ymask, dtype=np.float32)
+                B11_values[mask] = interpolate.RectBivariateSpline(
+                    np.arange(1, width - 1, dtype=np.float32),
+                    np.arange(0, height, dtype=np.float32),
+                    dvx_grid[:, :, 0].T,
+                    kx=1,
+                    ky=1)(xmask, ymask, grid=False)
+                B12_values[mask] = interpolate.RectBivariateSpline(
+                    np.arange(0, width, dtype=np.float32),
+                    np.arange(1, height - 1, dtype=np.float32),
+                    dvy_grid[:, :, 0].T,
+                    kx=1,
+                    ky=1)(xmask, ymask, grid=False)
+                B21_values[mask] = interpolate.RectBivariateSpline(
+                    np.arange(1, width - 1, dtype=np.float32),
+                    np.arange(0, height, dtype=np.float32),
+                    dvx_grid[:, :, 1].T,
+                    kx=1,
+                    ky=1)(xmask, ymask, grid=False)
+                B22_values[mask] = interpolate.RectBivariateSpline(
+                    np.arange(0, width, dtype=np.float32),
+                    np.arange(1, height - 1, dtype=np.float32),
+                    dvy_grid[:, :, 1].T,
+                    kx=1,
+                    ky=1)(xmask, ymask, grid=False)
 
                 B11 = sparse.csr_matrix((B11_values.flatten('F'), (np.arange(
                     0, height * width), np.arange(0, height * width))),
@@ -111,12 +119,18 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                 c2 = np.zeros((height, width))
 
                 # interpolations
-                c1[mask] = interp2d_pairs_eval(x_grid, y_grid, vt[tf + 1, :, :,
-                                                                  0], xmask,
-                                               ymask, dtype=np.float32) - vt[tf, :, :, 0][mask]
-                c2[mask] = interp2d_pairs_eval(x_grid, y_grid, vt[tf + 1, :, :,
-                                                                  1], xmask,
-                                               ymask, dtype=np.float32) - vt[tf, :, :, 1][mask]
+                c1[mask] = interpolate.RectBivariateSpline(
+                    np.arange(0, width, dtype=np.float32),
+                    np.arange(0, height, dtype=np.float32),
+                    vt[tf + 1, :, :, 0].T,
+                    kx=1,
+                    ky=1)(xmask, ymask, grid=False)  - vt[tf, :, :, 0][mask]
+                c2[mask] = interpolate.RectBivariateSpline(
+                    np.arange(0, width, dtype=np.float32),
+                    np.arange(0, height, dtype=np.float32),
+                    vt[tf + 1, :, :, 1].T,
+                    kx=1,
+                    ky=1)(xmask, ymask, grid=False)  - vt[tf, :, :, 1][mask]
 
                 c = sparse.csr_matrix(
                     np.concatenate([c1.flatten('F'),
@@ -207,7 +221,7 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
     invdetB = 1 / (B11 * B22 - B12 * B21)
     u_var_t = np.stack((invdetB * B22, -invdetB * B21, invdetB * B11), axis=2)
 
-    return u_mean_t , u_var_t
+    return u_mean_t, u_var_t
 
 
 def fluid_flow(wiggles, wiggles_var, **params):

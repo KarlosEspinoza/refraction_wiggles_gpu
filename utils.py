@@ -60,26 +60,3 @@ def temporal_filter(frames, t_filter_theta):
     frames = signal.fftconvolve(frames, t_filter, mode='same')
 
     return frames[md_frame:-md_frame, :, :]
-
-
-# use scipy.interpolate.interp2d to interpolate and evaluate as pairs of values
-def interp2d_pairs(*args, **kwargs):
-    # internal function that evaluates pairs of values
-    def interpolant(x, y, f):
-        x, y = np.asarray(x), np.asarray(y)
-
-        return (interpolate.dfitpack.bispeu(f.tck[0], f.tck[1], f.tck[2],
-                                            f.tck[3], f.tck[4], x.ravel(),
-                                            y.ravel())[0]).reshape(x.shape)
-
-    return lambda x, y: interpolant(x, y, interpolate.interp2d(
-        *args, **kwargs))
-
-
-def interp2d_pairs_eval(x, y, v, xq, yq, dtype=np.float):
-    f = interp2d_pairs(x.astype(dtype), y.astype(dtype), v.astype(dtype))
-
-    # suppress runtime warnings
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        return f(xq.astype(dtype), yq.astype(dtype))
