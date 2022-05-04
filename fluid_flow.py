@@ -142,9 +142,66 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                 f'frame {iframe}/{params["nframe"]-2}, i_out = {i_out}/{params["n_outer_iter"]-1}, i_in = {i_in}/{params["n_inner_iter"]-1} is done ({time.time() - start_time:.3f}s)'
             )
 
-        # calculate variance
+    # calculate variance
+    B = sparse.csr_matrix((height * width * 2, height * width * 2))
+    for tf in range(frame_list_len - 1):
+        dvx_grid = np.pad(
+            signal.fftconvolve(vt[tf, :, :, :],
+                               fdx[np.newaxis, :, np.newaxis],
+                               mode='valid'), ((0, 0), (1, 1), (0, 0)), 'edge')
+        dvy_grid = np.pad(
+            signal.fftconvolve(vt[tf, :, :, :],
+                               fdx[:, np.newaxis, np.newaxis],
+                               mode='valid'), ((1, 1), (0, 0), (0, 0)), 'edge')
+        B11 = sparse.csr_matrix(
+            (dvx_grid[:, :, 0].flatten('F'),
+             (np.arange(0, height * width), np.arange(0, height * width))),
+            shape=(height * width, height * width))
+        B12 = sparse.csr_matrix(
+            (dvy_grid[:, :, 0].flatten('F'),
+             (np.arange(0, height * width), np.arange(0, height * width))),
+            shape=(height * width, height * width))
+        B21 = sparse.csr_matrix(
+            (dvx_grid[:, :, 1].flatten('F'),
+             (np.arange(0, height * width), np.arange(0, height * width))),
+            shape=(height * width, height * width))
+        B22 = sparse.csr_matrix(
+            (dvy_grid[:, :, 1].flatten('F'),
+             (np.arange(0, height * width), np.arange(0, height * width))),
+            shape=(height * width, height * width))
+        B += sparse.vstack(
+            [sparse.hstack([B11, B12]),
+             sparse.hstack([B21, B22])])
 
-    return u_mean_t
+    B = B.T.dot(vi_var).dot(B)
+    B11 = np.reshape([B[i, i] for i in range(height * width)], (height, width),
+                     order='F')
+    B12 = np.reshape([B[i, i + height * width] for i in range(height * width)],
+                     (height, width),
+                     order='F')
+    B21 = np.reshape([B[i + height * width, i] for i in range(height * width)],
+                     (height, width),
+                     order='F')
+    B22 = np.reshape([
+        B[i + height * width, i + height * width]
+        for i in range(height * width)
+    ], (height, width),
+                     order='F')
+
+    # filter
+    sw = params['sigma_var'] * 3
+    fs = gaussian_filter([sw * 2 + 1, sw * 2 + 1], params['sigma_var'])
+    fs_weight = signal.fftconvolve(np.ones((height, width)), fs, 'same')
+    fs = fs / fs[sw, sw]
+
+    B11 = signal.fftconvolve(B11, fs, 'same') / fs_weight
+    B12 = signal.fftconvolve(B12, fs, 'same') / fs_weight
+    B21 = signal.fftconvolve(B21, fs, 'same') / fs_weight
+    B22 = signal.fftconvolve(B22, fs, 'same') / fs_weight
+    invdetB = 1 / (B11 * B22 - B12 * B21)
+    u_var_t = np.stack((invdetB * B22, -invdetB * B21, invdetB * B11), axis=2)
+
+    return u_mean_t , u_var_t
 
 
 def fluid_flow(wiggles, wiggles_var, **params):
@@ -169,13 +226,9 @@ def fluid_flow(wiggles, wiggles_var, **params):
     params['nframe'] = nframe
 
     # initialize outputs (for parallelization)
-    delayed_u_mean = []  # shape = (nframe - 1, height, width, 2)
-    u_var = np.zeros((nframe - 1, height, width, 3))
-
-    sw = params['sigma_var'] * 3
-    fs = gaussian_filter([sw * 2 + 1, sw * 2 + 1], params['sigma_var'])
-    fs_weight = signal.fftconvolve(np.ones((height, width)), fs, 'same')
-    fs = fs / fs[sw, sw]
+    # u_mean: shape = (nframe - 1, height, width, 2)
+    # u_var:  shape = (nframe - 1, height, width, 3)
+    delayed_u = []
 
     # construct sparse matrix Dy
     # shape = ((height-1) * width, height * width)
@@ -241,14 +294,18 @@ def fluid_flow(wiggles, wiggles_var, **params):
         vi = wiggles[iframe_list, :, :, :]
         vi_var = wiggles_var[iframe]
 
-        # u_mean_t = solve_u(vi, vi_var, A2, A3, iframe, **params)
+        # u_mean_t, u_var_t = solve_u(vi, vi_var, A2, A3, iframe, **params)
 
         # parallelization
         delayed_solve = delayed(solve_u)(vi, vi_var, A2, A3, iframe, **params)
-        delayed_u_mean.append(delayed_solve)
+        delayed_u.append(delayed_solve)
 
     # parallelization
     parallel_pool = Parallel(n_jobs=params["n_jobs"])
-    u_mean = parallel_pool(delayed_u_mean)
+    res = parallel_pool(delayed_u)
 
-    return np.array(u_mean)
+    # motion vectors and variances
+    u_mean = np.array([r[0] for r in res])
+    u_var = np.array([r[1] for r in res])
+
+    return u_mean, u_var
