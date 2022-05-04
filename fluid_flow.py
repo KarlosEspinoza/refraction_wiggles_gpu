@@ -1,8 +1,8 @@
-from utils import gaussian_filter
+from utils import gaussian_filter, init_parallelization
 import numpy as np
 from scipy import signal, sparse, interpolate
 import time
-from joblib import Parallel, delayed, cpu_count
+from joblib import Parallel, delayed
 
 
 # compute fluid flow for a single frame
@@ -295,16 +295,9 @@ def fluid_flow(wiggles, wiggles_var, **params):
          (np.arange(height * width * 2), np.arange(height * width * 2))),
         shape=(height * width * 2, height * width * 2))
 
-    # print out info
-    print('Start computing fluid flow...')
-    if params['n_jobs'] > 1:
-        if params['n_jobs'] > cpu_count():
-            print(
-                f'Warning: {params["n_jobs"]} jobs requested, but only {cpu_count()} CPUs available.'
-            )
-            params['n_jobs'] = cpu_count()
-        print(f'Running {params["n_jobs"]} parallel jobs...')
+    n_jobs = init_parallelization(params['n_jobs'])
 
+    print('Start computing fluid flow...')
     for iframe in range(nframe - 1):
 
         # extract needed wiggle features for current frame
@@ -321,10 +314,10 @@ def fluid_flow(wiggles, wiggles_var, **params):
         delayed_u.append(delayed_solve)
 
     # parallelization
-    parallel_pool = Parallel(n_jobs=params["n_jobs"])
+    parallel_pool = Parallel(n_jobs=n_jobs)
     res = parallel_pool(delayed_u)
 
-    # motion vectors and variances
+    # convert results (flow vectors and variances) to numpy array
     u_mean = np.array([r[0] for r in res])
     u_var = np.array([r[1] for r in res])
 

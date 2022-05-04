@@ -1,10 +1,12 @@
 import numpy as np
 from scipy import signal, sparse
 import time
+from joblib import Parallel, delayed
+from utils import init_parallelization
 
 
 # compute wiggle features for a single frame
-def solve_v(Ix, Iy, It, **params):
+def solve_v(Ix, Iy, It, iframe, **params):
     height, width = Ix.shape
 
     sqrt_alpha1 = np.sqrt(params['alpha1'])
@@ -18,6 +20,8 @@ def solve_v(Ix, Iy, It, **params):
     #  (sqrt_alpha1*(Ix, Iy); sqrt_alpha2*L) * (vx;  vy) = (-sqrt_alpha1 * It; 0)
     #  |------- A1 --------|  |---- A2 ----|
     #  |---------------- A ----------------|   |-- v --|   |-------- b ---------|
+
+    start_time = time.time()
 
     # construct sparse matrix A1
     # shape = (height * width, height * width * 2)
@@ -93,25 +97,33 @@ def solve_v(Ix, Iy, It, **params):
     # compute variance
     vi_variance = A.T.dot(A) * 1e6
 
+    print(
+        f'frame {iframe}/{params["nframe"]-2} is done ({time.time() - start_time:.3f}s)'
+    )
+
     return vi, vi_variance
 
 
 def opt_flow(frames, **params):
     # default values for parameters
-    default_params = {'alpha1': 1, 'alpha2': 1, 'normalize_It': True}
+    default_params = {
+        'alpha1': 1,
+        'alpha2': 1,
+        'normalize_It': True,
+        'n_jobs': 1  # number of parallelized jobs
+    }
 
     params = {**default_params, **params}
 
     nframe, height, width = frames.shape
     print(f'height: {height}, width: {width}')
+    params['nframe'] = nframe
 
-    # initialize outputs
-    # mean of motion vector:
-    v = np.zeros((nframe - 1, height, width, 2))
-
-    # variance of motion vector (sparse matrix for each frame):
+    # initialize outputs (for parallelization)
+    # v: mean of motion vector, shape = (nframe - 1, height, width, 2)
+    # v_varaince: variance of motion vector (sparse matrix for each frame),
     # shape = (nframe - 1, height*width*2, height*width*2)
-    v_variance = []
+    delayed_v = []
 
     # compute dI/dx
     Ix = signal.fftconvolve(frames, [[[1, 0, -1]]], mode='valid')
@@ -137,19 +149,29 @@ def opt_flow(frames, **params):
         median_It = np.median(sd_It)
         It = It * median_It / sd_It[:, np.newaxis, np.newaxis]
 
+    n_jobs = init_parallelization(params['n_jobs'])
+
     # loop through all frames in the video
     print('Start computing wiggle features...')
     for iframe in range(nframe - 1):
         # compute wiggle features
-        start_time = time.time()
-        vi, vi_variance = solve_v(Ix[iframe, :, :], Iy[iframe, :, :],
-                                  It[iframe, :, :], **params)
 
-        v[iframe, :, :, :] = vi.reshape(height, width, 2, order='F')
-        v_variance.append(vi_variance)
+        #vi, vi_variance = solve_v(Ix[iframe, :, :], Iy[iframe, :, :],
+        #                          It[iframe, :, :], **params)
+        #v[iframe, :, :, :] = vi.reshape(height, width, 2, order='F')
+        #v_variance.append(vi_variance)
 
-        print(
-            f'frame {iframe}/{nframe-2} is done ({time.time() - start_time:.3f}s)'
-        )
+        # parallelization
+        delayed_solve = delayed(solve_v)(Ix[iframe, :, :], Iy[iframe, :, :],
+                                         It[iframe, :, :], iframe, **params)
+        delayed_v.append(delayed_solve)
+
+    # parallelization
+    parallel_pool = Parallel(n_jobs=n_jobs)
+    res = parallel_pool(delayed_v)
+
+    # convert results (wiggles and variances) to numpy array
+    v = np.array([r[0].reshape(height, width, 2, order='F') for r in res])
+    v_variance = [r[1] for r in res]
 
     return v, v_variance

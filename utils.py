@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
-from scipy import signal, interpolate
-import warnings
+from scipy import signal
+from joblib import cpu_count
 
 
 # convert video to image matrix
@@ -60,3 +60,15 @@ def temporal_filter(frames, t_filter_theta):
     frames = signal.fftconvolve(frames, t_filter, mode='same')
 
     return frames[md_frame:-md_frame, :, :]
+
+def init_parallelization(n_jobs):
+    # print out info
+    if n_jobs > 1:
+        if n_jobs > cpu_count():
+            print(
+                f'Warning: {n_jobs} jobs requested, but only {cpu_count()} CPUs available.'
+            )
+            n_jobs = cpu_count()
+        print(f'Running {n_jobs} parallel jobs...')
+
+    return n_jobs
