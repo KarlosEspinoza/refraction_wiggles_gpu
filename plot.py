@@ -13,6 +13,7 @@ def generate_frame(frame, ax, args=None):
 
     set_ax(ax)
 
+
 # show quivers on a given ax
 def generate_quiver(vec, ax, args=None):
     height, width, _ = vec.shape
@@ -33,6 +34,7 @@ def generate_quiver(vec, ax, args=None):
 
     set_ax(ax)
 
+
 # set up ax
 def set_ax(ax):
     ax.invert_yaxis()
@@ -41,9 +43,18 @@ def set_ax(ax):
     ax.set_aspect('equal')
 
 
+# save figure
+def save_figure(fig, filename, args=None):
+    if args is not None:
+        fig.savefig(filename, bbox_inches='tight', **args)
+    else:
+        fig.savefig(filename, bbox_inches='tight')
+
+
 def plot_frame(frames, i, **params):
 
     filename = params.get('filename', None)
+    file_args = params.get('file_args', None)
 
     fig, ax = plt.subplots()
 
@@ -52,19 +63,21 @@ def plot_frame(frames, i, **params):
     plt.show()
 
     if filename is not None:
-        fig.savefig(filename, dpi=300)
+        save_figure(fig, filename, file_args)
 
 
 def plot_vector(vec, i, **params):
 
-    frames = params.get('frames', None) # overlay frame if frames is provided
-    filename = params.get('filename', None) # save to file if filename is provided
-    quiver_args = params.get('quiver_args', None) # arguments for quiver plot
-    frame_args = params.get('frame_args', None) # arguments for frame plot
+    frames = params.get('frames', None)  # overlay frame if frames is provided
+    filename = params.get('filename',
+                          None)  # save to file if filename is provided
+    quiver_args = params.get('quiver_args', None)  # arguments for quiver plot
+    frame_args = params.get('frame_args', None)  # arguments for frame plot
+    file_args = params.get('file_args', None)  # arguments for file save
 
     fig, ax = plt.subplots()
 
-    generate_quiver(vec[i,:,:,:], ax, quiver_args)
+    generate_quiver(vec[i, :, :, :], ax, quiver_args)
 
     # overlay original frame image when frames data is available
     if frames is not None:
@@ -73,7 +86,7 @@ def plot_vector(vec, i, **params):
     plt.show()
 
     if filename is not None:
-        fig.savefig(filename, dpi=300)
+        save_figure(fig, filename, file_args)
 
 
 def save_vector_video(vec, filename, **params):
@@ -87,7 +100,7 @@ def save_vector_video(vec, filename, **params):
     def animate(i):
         ax.clear()
 
-        generate_quiver(vec[i,:,:,:], ax, quiver_args)
+        generate_quiver(vec[i, :, :, :], ax, quiver_args)
 
         # overlay original frame image when frames data is available
         if frames is not None:
