@@ -25,8 +25,7 @@ if __name__ == '__main__':
     wiggles, wiggles_var = opt_flow(frames, alpha2=alpha, n_jobs=n_jobs)
     #plot_vector(wiggles, 0)
 
-    wiggle_max = np.sqrt(
-        np.amax(wiggles[:, :, :, 0])**2 + np.amax(wiggles[:, :, :, 1])**2)
+    wiggle_max = np.sqrt(np.sum(np.amax(wiggles, axis=(0,1,2))**2))
     save_vector_video(wiggles, 'hand_wiggles.mp4', scale=10 * wiggle_max)
 
     # compute fluid flow
@@ -39,6 +38,5 @@ if __name__ == '__main__':
 
     #plot_vector(flow, 0)
 
-    flow_max = np.sqrt(
-        np.amax(flow[:, :, :, 0])**2 + np.amax(flow[:, :, :, 1])**2)
+    flow_max = np.sqrt(np.sum(np.amax(flow, axis=(0,1,2))**2))
     save_vector_video(flow, 'hand_flow.mp4', scale=10 * flow_max)
