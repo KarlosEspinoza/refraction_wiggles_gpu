@@ -3,3 +3,4 @@ numpy
 opencv_python
 scipy
 joblib
+ffmpeg
