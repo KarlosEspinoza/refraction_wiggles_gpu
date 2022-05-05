@@ -168,6 +168,15 @@ def save_vector_video(vec, filename, **params):
     frames = params.get('frames', None)
     quiver_args = params.get('quiver_args', None)
     frame_args = params.get('frame_args', None)
+    scale_factor = params.get('scale_factor', 10) # for arrow size
+
+    vec_max = np.sqrt(np.sum(np.amax(vec, axis=(0, 1, 2))**2))
+    scale = vec_max * scale_factor
+
+    if quiver_args is not None:
+        quiver_args['scale'] = scale
+    else:
+        quiver_args = {'scale': scale}
 
     fig, ax = plt.subplots()
 

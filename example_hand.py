@@ -26,10 +26,8 @@ if __name__ == '__main__':
     #plot_vector(wiggles, 0)
     #plot_vector_color(wiggles, 0, colorwheel=True, alpha_min=0.2)
 
-    wiggle_max = np.sqrt(np.sum(np.amax(wiggles, axis=(0, 1, 2))**2))
     save_vector_video(wiggles,
-                      'hand_wiggles.mp4',
-                      quiver_args={'scale': 10 * wiggle_max})
+                      'hand_wiggles.mp4')
 
     # compute fluid flow
     flow, flow_var = fluid_flow(wiggles,
@@ -45,12 +43,8 @@ if __name__ == '__main__':
     # flow vector field color plot
     #plot_vector_color(flow, 0, colorwheel=True, filename='hand_flow_color.png')
 
-    flow_max = np.sqrt(np.sum(np.amax(flow, axis=(0, 1, 2))**2))
     save_vector_video(flow,
                       'hand_flow.mp4',
                       frames=frames,
-                      quiver_args={
-                          'scale': 10 * flow_max,
-                          'color': 'orange'
-                      },
+                      quiver_args={'color': 'orange'},
                       frame_args={'alpha': 0.7})
