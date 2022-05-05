@@ -16,3 +16,8 @@ Python >= 3.6 is required
 * Run example case:
 
 ```python example_hand.py```
+
+* Example results (an example frame and the corresponding flow vectors):
+
+![example frame](images/hand.png)
+![example flow](images/hand_flow.png)
