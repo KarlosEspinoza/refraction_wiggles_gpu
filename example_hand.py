@@ -19,7 +19,7 @@ if __name__ == '__main__':
     frames = temporal_filter(frames, t_filter_theta)
     #frames = frames[:10, :, :]
 
-    #plot_frame(frames, 0)
+    #plot_frame(frames, 0, filename='hand.png')
 
     # compute wiggles
     wiggles, wiggles_var = opt_flow(frames, alpha2=alpha, n_jobs=n_jobs)
@@ -39,4 +39,4 @@ if __name__ == '__main__':
     #plot_vector(flow, 0)
 
     flow_max = np.sqrt(np.sum(np.amax(flow, axis=(0, 1, 2))**2))
-    save_vector_video(flow, 'hand_flow.mp4', frames=frames, quiver_args={'scale':10 * flow_max, 'color': 'orange', 'alpha': 0.5})
+    save_vector_video(flow, 'hand_flow.mp4', frames=frames, quiver_args={'scale':10 * flow_max, 'color': 'orange'}, frame_args={'alpha':0.7})
