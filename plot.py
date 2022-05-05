@@ -7,7 +7,7 @@ def plot_frame(frames, i):
     frame = frames[i, :, :]
 
     fig, ax = plt.subplots()
-    plt.imshow(frame, cmap='gray', vmin=0, vmax=1)
+    ax.imshow(frame, cmap='gray', vmin=0, vmax=1)
 
     ax.xaxis.set_ticks([])
     ax.yaxis.set_ticks([])
@@ -15,7 +15,7 @@ def plot_frame(frames, i):
     plt.show()
 
 
-def generate_quiver(vec, i):
+def plot_quiver(vec, i, ax, args):
     _, height, width, _ = vec.shape
 
     # generate grid
@@ -24,21 +24,32 @@ def generate_quiver(vec, i):
     X, Y = np.meshgrid(x, y)
 
     # flip upside down because the origin of image is at the top left corner
-    u = vec[i, ::-1, :, 0]
-    v = vec[i, ::-1, :, 1]
+    u = vec[i, :, :, 0]
+    v = vec[i, :, :, 1]
 
-    return X, Y, u, v
+    if args is not None:
+        ax.quiver(X, Y, u, v, **args)
+    else:
+        ax.quiver(X, Y, u, v)
+
+    #return X, Y, u, v
 
 
 def plot_vector(vec, i, **params):
 
-    scale = params.get('scale', None)
-
-    X, Y, u, v = generate_quiver(vec, i)
+    frames = params.get('frames', None)
+    quiver_args = params.get('quiver_args', None)
 
     fig, ax = plt.subplots()
-    ax.quiver(X, Y, u, v, scale=scale)
 
+    plot_quiver(vec, i, ax, quiver_args)
+
+    # overlay original frame image when frames data is available
+    if frames is not None:
+        frame = frames[i, :, :]
+        ax.imshow(frame, origin='lower', cmap='gray', vmin=0, vmax=1)
+
+    ax.invert_yaxis()
     ax.xaxis.set_ticks([])
     ax.yaxis.set_ticks([])
     ax.set_aspect('equal')
@@ -48,15 +59,22 @@ def plot_vector(vec, i, **params):
 
 def save_vector_video(vec, filename, **params):
 
-    scale = params.get('scale', None)
+    frames = params.get('frames', None)
+    quiver_args = params.get('quiver_args', None)
 
     fig, ax = plt.subplots()
 
     def animate(i):
         ax.clear()
-        X, Y, u, v = generate_quiver(vec, i)
-        ax.quiver(X, Y, u, v, scale=scale)
 
+        plot_quiver(vec, i, ax, quiver_args)
+
+        # overlay original frame image when frames data is available
+        if frames is not None:
+            frame = frames[i, :, :]
+            ax.imshow(frame, origin='lower', cmap='gray', vmin=0, vmax=1)
+
+        ax.invert_yaxis()
         ax.xaxis.set_ticks([])
         ax.yaxis.set_ticks([])
         ax.set_aspect('equal')
