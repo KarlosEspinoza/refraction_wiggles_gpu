@@ -1,6 +1,5 @@
 matplotlib
 numpy
 opencv_python
-Pillow
 scipy
 joblib

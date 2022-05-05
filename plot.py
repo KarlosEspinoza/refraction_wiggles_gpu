@@ -1,14 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-from PIL import Image
 
 
 def plot_frame(frames, i):
-    frame = frames[i, :, :] * 255
-    frame = frame.astype(np.uint8)
-    im = Image.fromarray(frame, 'L')
-    im.show()
+    frame = frames[i, :, :]
+
+    fig, ax = plt.subplots()
+    plt.imshow(frame, cmap='gray', vmin=0, vmax=1)
+
+    ax.xaxis.set_ticks([])
+    ax.yaxis.set_ticks([])
+
+    plt.show()
 
 
 def generate_quiver(vec, i):
