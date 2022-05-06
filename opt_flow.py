@@ -116,7 +116,7 @@ def opt_flow(frames, **params):
     params = {**default_params, **params}
 
     nframe, height, width = frames.shape
-    print(f'height: {height}, width: {width}')
+    print(f'nframe: {nframe}, height: {height}, width: {width}')
     params['nframe'] = nframe
 
     # initialize outputs (for parallelization)

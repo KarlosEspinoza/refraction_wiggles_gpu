@@ -41,7 +41,7 @@ def generate_flow_color(vec, ax, **params):
     colorwheel = params.get('colorwheel', False)  # show colorwheel
     transparent = params.get('transparent',
                              True)  # use magnitude as transparency
-    alpha_min = params.get('alpha_min', 0) # minimum alpha value
+    alpha_min = params.get('alpha_min', 0)  # minimum alpha value
 
     u = vec[:, :, 0]
     v = vec[:, :, 1]
@@ -60,7 +60,10 @@ def generate_flow_color(vec, ax, **params):
 
     img = cmap(angle)  # shape = (height, weight, 4)
 
-    if transparent: img[:, :, 3] = mag * (1 - alpha_min) + alpha_min  # use magnitude as alpha value
+    if transparent:
+        img[:, :,
+            3] = mag * (1 -
+                        alpha_min) + alpha_min  # use magnitude as alpha value
 
     ax.imshow(img, origin='lower')
 
@@ -86,6 +89,39 @@ def generate_flow_color(vec, ax, **params):
 
         ax2.set_xticks([])
         ax2.set_yticks([])
+
+
+# show contour of variance on a given ax
+def generate_variance_contour(var, ax, args=None, **params):
+
+    colorbar = params.get('colorbar', True)
+    var_max = params.get('var_max', None)
+
+    height, width, _ = var.shape
+
+    # generate grid
+    x = np.arange(width)
+    y = np.arange(height)
+    X, Y = np.meshgrid(x, y)
+
+    # square root of the determinant of the covariance matrix
+    var_scalar = np.sqrt(var[:, :, 0] * var[:, :, 2] - var[:, :, 1]**2)
+
+    if var_max is not None:
+        var_scalar = np.minimum(var_scalar, var_max)
+
+    # contour plot
+    if args is not None:
+        cs = ax.contourf(X, Y, var_scalar, **args)
+    else:
+        cs = ax.contourf(X, Y, var_scalar)
+
+    set_ax(ax)
+
+    # colorbar
+    if colorbar:
+        fig = ax.get_figure()
+        fig.colorbar(cs)
 
 
 # set up ax
@@ -154,8 +190,23 @@ def plot_vector_color(vec, i, **params):
     if frames is not None:
         generate_frame(frames[i, :, :], ax, frame_args)
 
-    generate_flow_color(vec[i, :, :, :],
-                        ax, **params)
+    generate_flow_color(vec[i, :, :, :], ax, **params)
+
+    plt.show()
+
+    if filename is not None:
+        save_figure(fig, filename, file_args)
+
+
+def plot_vector_variance(var, i, **params):
+
+    contour_args = params.get('contour_args', None)
+    filename = params.get('filename', None)
+    file_args = params.get('file_args', None)
+
+    fig, ax = plt.subplots()
+
+    generate_variance_contour(var[i, :, :, :], ax, contour_args, **params)
 
     plt.show()
 
@@ -168,7 +219,7 @@ def save_vector_video(vec, filename, **params):
     frames = params.get('frames', None)
     quiver_args = params.get('quiver_args', None)
     frame_args = params.get('frame_args', None)
-    scale_factor = params.get('scale_factor', 10) # for arrow size
+    scale_factor = params.get('scale_factor', 10)  # for arrow size
 
     vec_max = np.sqrt(np.sum(np.amax(vec, axis=(0, 1, 2))**2))
     scale = vec_max * scale_factor
@@ -215,4 +266,5 @@ def middlebury_cmap():
             cmap[i0:i1, j0] = 1
             cmap[i0:i1, j1] = np.arange(l) / l
 
-    return plt.cm.colors.LinearSegmentedColormap.from_list('middlebury', cmap).reversed()
+    return plt.cm.colors.LinearSegmentedColormap.from_list('middlebury',
+                                                           cmap).reversed()

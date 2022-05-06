@@ -17,7 +17,9 @@ Python >= 3.6 is required
 
 ```python example_hand.py```
 
-* Example results (an example frame and the corresponding flow vectors):
+* Example results (an example frame, the corresponding flow  field visualized in two ways, and the variance of the estimated flow):
 
-![example frame](images/hand.png)
+ ![example frame](images/hand.png)
 ![example flow](images/hand_flow.png)
+![example flow color coding](images/hand_flow_color.png)
+![example flow variance](images/hand_flow_var.png)

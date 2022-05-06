@@ -9,6 +9,7 @@ from joblib import Parallel, delayed
 def solve_u(vi, vi_var, A2, A3, iframe, **params):
     frame_list_len, height, width, _ = vi.shape
 
+    # use multi-scale iterative algorithm to solve u
     sigma_list = np.logspace(np.log10(params['sigma_start']),
                              np.log10(params['sigma_end']),
                              num=params['n_outer_iter'])
@@ -137,6 +138,7 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                                     c2.flatten('F')])[:, np.newaxis])
                 c = c.astype(np.float32)
 
+                # data term is weighted by the variance of the optical flow to robustly estimate the flow motion
                 BA = B.T.dot(vi_var)
                 BA = BA.astype(np.float32)
 
@@ -208,18 +210,24 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
     ], (height, width),
                      order='F')
 
-    # filter
+    # define Gaussian filter
     sw = params['sigma_var'] * 3
     fs = gaussian_filter([sw * 2 + 1, sw * 2 + 1], params['sigma_var'])
     fs_weight = signal.fftconvolve(np.ones((height, width)), fs, 'same')
     fs = fs / fs[sw, sw]
 
+    # apply Gaussian filter
     B11 = signal.fftconvolve(B11, fs, 'same') / fs_weight
     B12 = signal.fftconvolve(B12, fs, 'same') / fs_weight
     B21 = signal.fftconvolve(B21, fs, 'same') / fs_weight
     B22 = signal.fftconvolve(B22, fs, 'same') / fs_weight
+
+    # calculate inverse of determinant of B
     invdetB = 1 / (B11 * B22 - B12 * B21)
+
+    # calculate variance (only 3 components stored for each pixel since covariance matrix is symmetric)
     u_var_t = np.stack((invdetB * B22, -invdetB * B21, invdetB * B11), axis=2)
+    u_var_t = u_var_t.astype(np.float32)
 
     return u_mean_t, u_var_t
 
