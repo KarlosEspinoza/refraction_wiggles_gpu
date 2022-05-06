@@ -15,6 +15,10 @@ if __name__ == '__main__':
     beta3 = 1  # weight of the magnitude penalty term for fluid flow
     t_window = 10  # number of frames to be concatenated to form wiggle feature
 
+    # solver parameters
+    opt_flow_args = {'atol': 1e-4, 'btol': 1e-4}
+    fluid_flow_args = {'atol': 1e-4, 'btol': 1e-4}
+
     # convert video to frames with shape (n_frames, height, width)
     frames = video2matrix(video_path, scale=scale)
 
@@ -25,7 +29,10 @@ if __name__ == '__main__':
     #plot_frame(frames, 0, filename='hand.png')
 
     # compute wiggles (optical flow)
-    wiggles, wiggles_var = opt_flow(frames, alpha2=alpha, n_jobs=n_jobs)
+    wiggles, wiggles_var = opt_flow(frames,
+                                    alpha2=alpha,
+                                    n_jobs=n_jobs,
+                                    solver_args=opt_flow_args)
 
     #plot_vector(wiggles, 0)
 
@@ -37,7 +44,8 @@ if __name__ == '__main__':
                                 beta2=beta2,
                                 beta3=beta3,
                                 t_window=t_window,
-                                n_jobs=n_jobs)
+                                n_jobs=n_jobs,
+                                solver_args=fluid_flow_args)
 
     # flow vector field quiver plot
     #plot_vector(flow, 0)

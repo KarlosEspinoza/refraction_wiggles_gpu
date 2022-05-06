@@ -155,7 +155,7 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                   params['beta3'] * ui_t)
             b = b.astype(np.float32)
 
-            ui = sparse.linalg.lsmr(A, b)[0]
+            ui = sparse.linalg.lsmr(A, b, **params['solver_args'])[0]
 
             u_mean_t += ui.reshape((height, width, 2), order='F')
             u_mean_t[u_mean_t > params['u_max']] = params['u_max']
@@ -245,7 +245,8 @@ def fluid_flow(wiggles, wiggles_var, **params):
         't_window': 2,
         'sigma_var': 3,
         'u_max': 50,
-        'n_jobs': 1  # number of parallelized jobs
+        'n_jobs': 1,  # number of parallelized jobs
+        'solver_args': {}
     }
 
     params = {**default_params, **params}

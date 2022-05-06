@@ -92,7 +92,7 @@ def solve_v(Ix, Iy, It, iframe, **params):
     b = b.astype(np.float32)
 
     # solve linear system to obtain v
-    vi = sparse.linalg.lsmr(A, b)[0]
+    vi = sparse.linalg.lsmr(A, b, **params['solver_args'])[0]
 
     # compute variance
     vi_variance = A.T.dot(A) * 1e6
@@ -110,7 +110,8 @@ def opt_flow(frames, **params):
         'alpha1': 1,
         'alpha2': 1,
         'normalize_It': True,
-        'n_jobs': 1  # number of parallelized jobs
+        'n_jobs': 1,  # number of parallelized jobs
+        'solver_args': {}
     }
 
     params = {**default_params, **params}
