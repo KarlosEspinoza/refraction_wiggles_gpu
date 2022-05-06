@@ -39,6 +39,7 @@ def solve_v(Ix, Iy, It, iframe, **params):
         (Ix.flatten('F'), Iy.flatten('F'))).flatten('F')
     A1 = sparse.csr_matrix((A1_values, (A1_i, A1_j)),
                            shape=(height * width, height * width * 2))
+    del A1_i, A1_j, A1_values
 
     # construct sparse matrix A2y
     # shape = (2 * (height-1) * width, height * width * 2)
@@ -61,6 +62,7 @@ def solve_v(Ix, Iy, It, iframe, **params):
         sparse.csr_matrix((A2y_values, (A2y_i, A2y_j + height * width)),
                           shape=((height - 1) * width, height * width * 2))
     ])
+    del A2y_i, A2y_j, A2y_values
 
     # construct sparse matrix A2x
     # shape = (2 * height * (width-1), height * width * 2)
@@ -81,6 +83,7 @@ def solve_v(Ix, Iy, It, iframe, **params):
         sparse.csr_matrix((A2x_values, (A2x_i, A2x_j + height * width)),
                           shape=(height * (width - 1), height * width * 2))
     ])
+    del A2x_i, A2x_j, A2x_values
 
     # combine A1, A2x and A2y to obtain A
     A = sparse.vstack([A1, A2x, A2y])
@@ -90,6 +93,8 @@ def solve_v(Ix, Iy, It, iframe, **params):
     b = -sqrt_alpha1 * It.flatten('F')
     b = np.concatenate([b, np.zeros(A2x.shape[0] + A2y.shape[0])])
     b = b.astype(np.float32)
+
+    del A1, A2x, A2y
 
     # solve linear system to obtain v
     vi = sparse.linalg.lsmr(A, b, **params['solver_args'])[0]

@@ -109,11 +109,13 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                 B22 = sparse.csr_matrix((B22_values.flatten('F'), (np.arange(
                     0, height * width), np.arange(0, height * width))),
                                         shape=(height * width, height * width))
+                del B11_values, B12_values, B21_values, B22_values, dvx_grid, dvy_grid
 
                 B = sparse.vstack(
                     [sparse.hstack([B11, B12]),
                      sparse.hstack([B21, B22])])
                 B = B.astype(np.float32)
+                del B11, B12, B21, B22
 
                 # construct sparse matrix c
                 c1 = np.zeros((height, width))
@@ -125,18 +127,19 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                     np.arange(0, height, dtype=np.float32),
                     vt[tf + 1, :, :, 0].T,
                     kx=1,
-                    ky=1)(xmask, ymask, grid=False)  - vt[tf, :, :, 0][mask]
+                    ky=1)(xmask, ymask, grid=False) - vt[tf, :, :, 0][mask]
                 c2[mask] = interpolate.RectBivariateSpline(
                     np.arange(0, width, dtype=np.float32),
                     np.arange(0, height, dtype=np.float32),
                     vt[tf + 1, :, :, 1].T,
                     kx=1,
-                    ky=1)(xmask, ymask, grid=False)  - vt[tf, :, :, 1][mask]
+                    ky=1)(xmask, ymask, grid=False) - vt[tf, :, :, 1][mask]
 
                 c = sparse.csr_matrix(
                     np.concatenate([c1.flatten('F'),
                                     c2.flatten('F')])[:, np.newaxis])
                 c = c.astype(np.float32)
+                del c1, c2
 
                 # data term is weighted by the variance of the optical flow to robustly estimate the flow motion
                 BA = B.T.dot(vi_var)
@@ -144,6 +147,7 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
 
                 BSB = BSB + BA.dot(B)
                 BSc = BSc + BA.dot(c)
+                del BA, B, c
 
             ui_t = u_mean_t.flatten('F')
 
@@ -155,7 +159,11 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
                   params['beta3'] * ui_t)
             b = b.astype(np.float32)
 
+            del BSB, BSc
+
             ui = sparse.linalg.lsmr(A, b, **params['solver_args'])[0]
+
+            del A, b
 
             u_mean_t += ui.reshape((height, width, 2), order='F')
             u_mean_t[u_mean_t > params['u_max']] = params['u_max']
@@ -194,6 +202,7 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
         B += sparse.vstack(
             [sparse.hstack([B11, B12]),
              sparse.hstack([B21, B22])])
+        del B11, B12, B21, B22, dvx_grid, dvy_grid
 
     B = B.T.dot(vi_var).dot(B)
     B11 = np.reshape([B[i, i] for i in range(height * width)], (height, width),
@@ -209,6 +218,7 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
         for i in range(height * width)
     ], (height, width),
                      order='F')
+    del B
 
     # define Gaussian filter
     sw = params['sigma_var'] * 3
@@ -228,6 +238,8 @@ def solve_u(vi, vi_var, A2, A3, iframe, **params):
     # calculate variance (only 3 components stored for each pixel since covariance matrix is symmetric)
     u_var_t = np.stack((invdetB * B22, -invdetB * B21, invdetB * B11), axis=2)
     u_var_t = u_var_t.astype(np.float32)
+
+    del B11, B12, B21, B22, invdetB
 
     return u_mean_t, u_var_t
 
