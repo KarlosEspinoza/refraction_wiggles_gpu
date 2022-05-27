@@ -50,6 +50,16 @@ def gaussian_filter(shape, sigma):
 
 
 def temporal_filter(frames, t_filter_theta):
+
+    # calculate maximum allowed value for t_filter_theta
+    max_t_filter_theta = int(int((frames.shape[0] - 2) / 2) / 3)
+    # check if t_filter_theta is within range
+    if t_filter_theta > max_t_filter_theta:
+        print(
+            f'Warning: t_filter_theta = {t_filter_theta} is too large. Set to {max_t_filter_theta}.'
+        )
+        t_filter_theta = max_t_filter_theta
+
     tw = t_filter_theta * 2
     md_frame = t_filter_theta * 3
 
@@ -60,6 +70,7 @@ def temporal_filter(frames, t_filter_theta):
     frames = signal.fftconvolve(frames, t_filter, mode='same')
 
     return frames[md_frame:-md_frame, :, :]
+
 
 def init_parallelization(n_jobs):
     # print out info
