@@ -1,4 +1,4 @@
-from utils import gaussian_filter, init_parallelization
+from tools import gaussian_filter, init_parallelization
 import numpy as np
 from scipy import signal, sparse, interpolate
 import time

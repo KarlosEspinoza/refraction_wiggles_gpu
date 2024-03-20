@@ -1,0 +1,31 @@
+This code is released free and unsupported to those who might find it useful. 
+We do not take any responsibility whatsoever for any problems that
+you have related to the use of this code.
+
+If you are using part of this code in your work, please cite to the following work:
+@article{xue2014fluidflow,   
+    author = {Tianfan Xue and Michael Rubinstein and Neal Wadhwa and Anat Levin and Fr\'{e}do Durand and William T. Freeman},   
+    title = {Refraction Wiggles for Measuring Fluid Depth and Velocity from Video},   
+    journal = {Proc. of European Conference on Computer Vision (ECCV)},   
+    year = {2014}, 
+}
+
+
+
+- To run the sample code
+
+script_hand.m	
+	
+
+
+- Acknowledgement:
+
+The function propval.m is from the Princeton MVPA toolbox, released under
+the GPL. See http://www.csbmb.princeton.edu/mvpa for more
+information.
+
+The function sor_dongarra.m is from Univ. of Tennessee and Oak Ridge National Laboratory.
+See the comments to that function for more details.
+
+The function Coarse2FineTwoFrames is from Ce Liu's optical flow package. Please
+refer to https://people.csail.mit.edu/celiu/OpticalFlow/ for more details.

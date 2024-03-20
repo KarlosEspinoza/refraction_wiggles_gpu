@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import cv2
 
 
 # show a single frame on a given ax
@@ -16,7 +17,8 @@ def generate_frame(frame, ax, args=None):
 
 # show quivers on a given ax
 def generate_quiver(vec, ax, args=None):
-    height, width, _ = vec.shape
+    #height, width, _ = vec.shape
+    _, height, width = vec.shape
 
     # generate grid
     x = np.arange(width)
@@ -24,8 +26,10 @@ def generate_quiver(vec, ax, args=None):
     X, Y = np.meshgrid(x, y)
 
     # flip upside down because the origin of image is at the top left corner
-    u = vec[:, :, 0]
-    v = vec[:, :, 1]
+    #u = vec[:, :, 0]
+    #v = vec[:, :, 1]
+    u = vec[0, :, :]
+    v = vec[1, :, :]
 
     if args is not None:
         ax.quiver(X, Y, u, v, **args)
@@ -43,8 +47,10 @@ def generate_flow_color(vec, ax, **params):
                              True)  # use magnitude as transparency
     alpha_min = params.get('alpha_min', 0)  # minimum alpha value
 
-    u = vec[:, :, 0]
-    v = vec[:, :, 1]
+    #u = vec[:, :, 0]
+    #v = vec[:, :, 1]
+    u = vec[0, :, :]
+    v = vec[1, :, :]
 
     mag = np.sqrt(u**2 + v**2)
     angle = np.mod(np.arctan2(v, u), 2 * np.pi)
@@ -268,3 +274,12 @@ def middlebury_cmap():
 
     return plt.cm.colors.LinearSegmentedColormap.from_list('middlebury',
                                                            cmap).reversed()
+
+def save_nparray_video(nparray, videoname, fps):
+    nparray = (nparray*255).round(0).astype(np.uint8)
+    size = nparray.shape
+    out = cv2.VideoWriter(videoname, cv2.VideoWriter_fourcc(*'mp4v'), fps, (size[2], size[1]), False)
+    for i in range(size[0]):
+        data = nparray[i, :, :]
+        out.write(data)
+    out.release()
